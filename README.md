@@ -1,3 +1,110 @@
+# MediaPipe (Bifurcación): Holistic Legacy con Hand WORLD_LANDMARKS
+
+Este repositorio es una bifurcación (_fork_) del proyecto original de código abierto MediaPipe de Google, **basado específicamente en la versión 0.10.24**.
+
+### Justificación de la Versión
+
+Se ha seleccionado la versión **0.10.24** como base estable para este parche debido a que es el punto óptimo de compatibilidad entre las APIs de **Solutions** y la infraestructura **Legacy**. Esta versión permite realizar modificaciones profundas en los grafos de cálculo sin perder la integración con los componentes de alto nivel que muchos desarrollos actuales todavía requieren.
+
+### Propósito del Parche
+
+Esta versión contiene modificaciones estructurales en los grafos de cálculo de la arquitectura **MediaPipe Holistic Legacy**. Su propósito es exponer las coordenadas espaciales métricas tridimensionales (`WORLD_LANDMARKS`) de las manos, datos que la arquitectura original calcula internamente pero que omite enrutar hacia la salida final (_output streams_).
+
+La disponibilidad de estas coordenadas de profundidad con precisión métrica es un requisito crítico en desarrollos de análisis espacial riguroso, permitiendo una interpretación del movimiento en metros reales en lugar de solo coordenadas normalizadas a la imagen.
+
+## Herramientas de Parcheo y Pruebas
+
+Para mantener la transparencia de las modificaciones y aislar los entornos de prueba, el repositorio incluye el directorio `scripts/`. Este directorio contiene los siguientes archivos estructurales:
+
+~~- **`patch_world_landmarks.py`**: Script de automatización que inyecta las configuraciones de salida (`output_stream`) para los `WORLD_LANDMARKS` directamente en los archivos de grafos (`.pbtxt`) y en el envoltorio de Python (`holistic.py`) del código fuente.~~
+- **`test_holistic_hand_world_landmarks.py`**: Script de validación diseñado para ejecutarse fuera de la raíz del código fuente (evitando el sombreado de módulos o _shadowing_). Su función es verificar que el paquete compilado e instalado en el sistema operativo expone correctamente los nuevos atributos.
+
+## Instalación de la Versión Modificada
+
+Para preservar la eficiencia del pipeline integrado y evitar los procesos de compilación locales (Bazel, C++), se proporcionan los binarios de instalación de Python precompilados (`.whl`) para arquitecturas de escritorio.
+
+1. Desinstale cualquier versión previa de MediaPipe en su entorno virtual:
+
+   ```bash
+   pip uninstall mediapipe
+   ```
+
+2. Diríjase a la sección de **Releases** de este repositorio.
+3. Copie el enlace directo del archivo `.whl` correspondiente a su sistema operativo (Windows, Linux, macOS Intel o macOS Silicon).
+4. Instale el paquete utilizando el enlace directo:
+   ```bash
+   pip install [URL_DEL_ARCHIVO_WHL]
+   ```
+
+### Instalación Windows
+
+```bash
+ pip install mediapipe==0.10.21 --find-links https://github.com/jesusgortarez/mediapipe-legacy-holistic-hand-world-landmarks/releases/tag/v0.10.21-patched
+```
+
+## Verificación de Resultados
+
+Una vez instalado el paquete precompilado, el objeto de resultados de la clase `Holistic` expondrá los nuevos atributos espaciales.
+Puede validar la extracción de los nuevos datos ejecutando el script de prueba incluido en este repositorio. Este script descarga una imagen de prueba, la procesa utilizando la nueva topología y extrae las coordenadas.
+
+Ejecute el siguiente comando desde su terminal (asegúrese de estar ubicado en la raíz del repositorio):
+
+```python
+python scripts/test_holistic_hand_world_landmarks.py
+```
+
+o bien aqui esta el script test_holistic_hand_world_landmarks
+
+```python
+import mediapipe as mp
+import cv2
+import os
+import urllib.request
+
+
+import cv2
+# 1. Descargar la imagen directamente al disco
+url = "https://cdn.pixabay.com/photo/2019/03/12/20/39/girl-4051811_960_720.jpg"
+out_path = "temp_image.jpg"
+if not os.path.exists(out_path):
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req) as resp, open(out_path, "wb") as f:
+        f.write(resp.read())
+
+# 2. Configurar MediaPipe
+mp_holistic = mp.solutions.holistic
+
+with mp_holistic.Holistic(static_image_mode=True, model_complexity=1) as holistic:
+    # Leer la imagen descargada
+    image = cv2.imread("temp_image.jpg")
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+    # Procesar
+    results = holistic.process(image_rgb)
+
+    # 3. Mostrar WORLD_LANDMARKS (Coordenadas métricas)
+    if results.left_hand_world_landmarks:
+        print("Mano izquierda detectada (World):")
+        print(results.left_hand_world_landmarks.landmark[0]) # Solo el primer punto para no llenar la consola
+
+    if results.right_hand_world_landmarks:
+        print("Mano derecha detectada (World):")
+        print(results.right_hand_world_landmarks.landmark[0])
+
+    # 4. Ver la imagen
+    cv2.imshow("Prueba Holistic", image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+```
+
+## Cumplimiento de Licencia
+
+El código fuente original de MediaPipe es distribuido bajo la Licencia Apache 2.0. De acuerdo con sus estipulaciones legales, los archivos originales `.pbtxt` y `.py` modificados para este proyecto contienen un aviso explícito documentando la alteración.
+
+---
+
+# Documentación Oficial de MediaPipe
+
 ---
 layout: forward
 target: https://developers.google.com/mediapipe
